@@ -92,6 +92,18 @@ class Board {
     }
 
 
+    /** Very important routine
+     *  Naive implementation with java library call
+     *  Deserving of some de bruijn magic*/
+    public static int bitscanLSD(long state) {
+        long lsb = state & -state;
+        return Long.numberOfTrailingZeroes(lsb);
+    }
+
+    public static int bitscanMSD(long state) {
+        //not sure how to implement this simply
+    }
+
     /** Returns the board state of possible pawn positions 
      *  Does not treat captures or promotion*/
     public static long pawnPushes(long[] board, Color player) {    
