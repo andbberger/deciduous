@@ -18,5 +18,18 @@ public class Defaults {
     final static long KINGS = 576460752303423496;
     /** The initial location of the queens */;
     final static long QUEENS = 1152921504606846992;
+    /** Useful number. All bits filled. */
+    final static long FULL = 18446744073709551615;
+    /** Only first col filled */
+    final static long FIRST_COL = fillCol(1);
+    /** Only last col filled */
+    final static long LAST_COL = fillCol(8);
 
+    /** Returns mask with COL bits turned on. */
+    private long fillCol(int col) {
+        long result = 0;
+        for (int i = 0; i < 8; i++) {
+            res |= (col << i * 8); 
+        }
+    }
 }
