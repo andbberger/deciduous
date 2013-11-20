@@ -1,5 +1,7 @@
 package deciduous;
 
+import java.util.ArrayList;
+
 import static deciduous.Color;
 
 /** Library of operations for manipulating the board representation.
@@ -69,6 +71,29 @@ class Board {
         board[6] = KINGS;
         board[7] = QUEENS:
     }
+
+    /** Returns list of pseudo legal moves */
+    public static int[][] generateMoves(long[] board, Color player) {
+        //218 is the max number of moves per position (??)
+        ArrayList<int[]> moves = new ArrayList<int[]>();
+        long myPieces = board[player.index()];
+        long rooks = myPieces & board[5];
+        while (rooks != 0) {
+            int getMyMoves = bitscanForward(rooks);
+            long myMoves = rookMoves(board, getMyMoves);
+            while(myMoves != 0) {
+                int[] m = new int[2];
+                m[0] = getMyMoves;
+                m[1] = bitscanForward(myMoves);
+                //falling asleep this isn't right yet x
+            }
+        }
+    }
+
+    /** Returns the number of bits flipped on in state */
+    public static int cardinality(long state) {
+
+    }
     
     /** Destructively get the Nth bit of STATE.
      *  Return true iff it is 1 */
@@ -104,6 +129,20 @@ class Board {
         //not sure how to implement this simply
     }
 
+    
+    /** Returns the state representing the squares sliding piece on SQUARE can move
+     *  Very naive implementation and there are definitely fancier ways of doing sliding move generation 
+     *  I think there is a bug when the board is empty
+     *  DIR only has certain allowed values refer to ray doc*/
+    private static long rayAttack(long[] board, int square, int dir) {
+        long r = ray(square, dir);
+        long occupancy = board[0] & board[1];
+        long obstacles = r & occupancy;
+        //turn on MSB?
+        long unavailable = ray(bitscanLSD(obstacles), dir);
+        return  r ^ unavailable;
+    }
+
     /** Returns the board state of possible pawn positions 
      *  Does not treat captures or promotion*/
     public static long pawnPushes(long[] board, Color player) {    
@@ -132,6 +171,15 @@ class Board {
         long noRight = pawns & clearFile[7];
         long leftMoves = noRight << (sign * 8 - 1);
         return leftMoves & board[player.opposite().index()];
+    }
+    
+    /** Returns the state representing all moves the rook on SQUARE can make*/
+    public static long rookMoves(long[] board, int square) {
+        return rayAttack(board, square, 1) & rayAttack(board, square, -1) & rayAttack(board, square, 8) & rayAttack(board, square, -8);
+    }
+
+    public static long bishopMoves(long[] board, int square) {
+        return rayAttack(board, square, -7) & rayAttack(board, square, 7) & rayAttack(board, square, -9) & rayAttack(board, square, 9);        
     }
     
 
