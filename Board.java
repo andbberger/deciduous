@@ -79,13 +79,14 @@ class Board {
         long myPieces = board[player.index()];
         long rooks = myPieces & board[5];
         while (rooks != 0) {
-            int getMyMoves = bitscanForward(rooks);
-            long myMoves = rookMoves(board, getMyMoves);
-            while(myMoves != 0) {
+            int rook = bitscanForward(rooks);
+            long rookPseudos = rookMoves(board, sq);
+            while(rookPseudos != 0) {
                 int[] m = new int[2];
-                m[0] = getMyMoves;
-                m[1] = bitscanForward(myMoves);
-                //falling asleep this isn't right yet x
+                m[0] = rook;
+                m[1] = bitscanForward(rookPseudos);
+                moves.add(m);
+                rooks ^= rook;
             }
         }
     }
