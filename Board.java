@@ -41,6 +41,7 @@ class Board {
         east = new long[64];
         northWe = new long[64];
         initRays();
+        knightAttacks = new long[64];
     }
     
     
@@ -54,7 +55,7 @@ class Board {
      *
      *  1: A B C D E F G H | 0 1 2 3 4 5 6 7 
      *  2: A B C D E F G H | 8 9 10 11 12 13 14 15 
-     *  3: A B C D E F G H | 16 17 18 19 20 21 22 23*
+     *  3: A B C D E F G H | 16 17 18 19 20 21 22 23
      *  ...
      *  8: A B C D E F G H | 56 57 58 59 60 61 62 63
      * 
@@ -85,10 +86,16 @@ class Board {
     /** Returns list of pseudo legal moves 
      *  Doesn't distinguish between captures and quiet moves*/
     public static ArrayList<int[]> generateMoves(long[] board, Color player) {
-        //218 is the max number of moves per position (??)
-        ArrayList<int[]> moves = new ArrayList<int[]>();
-        long myPieces = board[player.index()];
-        long rooks = myPieces & board[5];
+        List<int[]> moves = new ArrayList<int[]>();
+        moves.addAll(generateBishopMoves(board, player));
+        moves.addAll(generateRookMoves(board, player));
+        moves.addAll(generatePawnMoves(board, player));
+        moves.addAll(generateQueenMoves(board, player));
+    }
+    
+    public static ArrayList<int[]> generateRookMoves(long[] board, Color player) {
+        ArrayList<int[]> rookMoves = new ArrayList<int[]>();
+        long rooks = board[player.index()] & board[5];
         while (rooks != 0) {
             int rook = bitscanForward(rooks);
             long rookPseudos = rookMoves(board, rook, player);
@@ -96,12 +103,17 @@ class Board {
                 int[] m = new int[2];
                 m[0] = rook;
                 m[1] = bitscanForward(rookPseudos);
-                moves.add(m);
+                rookMoves.add(m);
                 rooks ^= (1 << rook);
                 rookPseudos ^= (1 << m[1]);
             }
         }
-        long bishops = myPieces & board[3];
+        return rookMoves;
+    }
+
+    public static ArrayList<int[]> generateBishopMoves(long[] board, Color player) {
+        ArrayList<int[]> bishopMoves = new ArrayList<int[]>();
+        long bishops = board[player.index()] & board[3];
         while (bishops != 0) {
             int bishop = bitscanForward(bishops);
             long bishopPseudos = bishopMoves(board, bishop, player);
@@ -109,13 +121,27 @@ class Board {
                 int m = new int[2];
                 m[0] = bishop;
                 m[1] = bitscanForward(bishopPseudos);
-                moves.add(m);
+                bishopMoves.add(m);
                 bishops  ^= (1 << bishop);
                 bishopPseudos ^= (1 << m[1]);
             }
         }
-        pawnMoves = generatePawnMoves(board, player);
-        
+        return bishopMoves;
+    }
+
+    public static ArrayList<int[]> generateQueenMoves(long[] board, Color player) {
+        ArrayList<int[]> queenMoves = new ArrayList<int[]>();
+        long queen = board[player.index()] & board[7];
+        int queenPos = bitscanForward(queen);
+        long queenPseudos = queenMoves(board, queenPos, player);
+        while (queenPseudos != 0) {
+            int m = new int[2];
+            m[0] = queenPos;
+            m[1] = bitscanForward(queenPseudos);
+            queenMoves.add(m);
+            queenPseudos ^= (1 << m[1]);
+        }
+        return queenMoves
     }
 
     public static ArrayList<int[]> generatePawnMoves(long[] board, Color player) {
@@ -381,6 +407,37 @@ class Board {
             southWe[i] &= ~(1 << i);
         }
     }
+
+
+    /** Fills up our very convenient lookup table
+     *  Knight compass rose:
+     *
+     *        noNoWe    noNoEa
+     *            +15  +17
+     *             |     |
+     *noWeWe  +6 __|     |__+10  noEaEa
+     *              \   /
+     *               >0<
+     *           __ /   \ __
+     *soWeWe -10   |     |   -6  soEaEa
+     *             |     |
+     *            -17  -15
+     *        soSoWe    soSoEa
+     **/
+    private void initKnightAttacks() {
+        for (int s = 0; s < 64; s++) {
+            long knight = (1 << s);
+            knightAttacks[s] = knight;
+            knightAttacks[s] |= (knight << 17) & clearFile[0];
+            knightAttacks[s] |= (knight << 10) & (clearFile[0] & clearFile[1]);
+            knightAttacks[s] |= (knight >>> 6) & (clearFile[0] & clearFile[1]);
+            knightAttacks[s] |= (knight >>> 15) & clearFile[0];
+            knightAttacks[s] |= (knight << 15) & clearFile[7];
+            knightAttacks[s] |= (knight << 6) & (clearFile[6] & clearFile[7]);
+            knightAttacks[s] |= (knight >>> 10) & (clearFile[6] & clearFile[7]);
+            knightAttacks[s] |= (knight >>> 17) & clearFile[7];
+        }
+    }
     
     /** Ranks correspond to numbers. RANK corresponds to letters
      *  0 : A
@@ -412,13 +469,16 @@ class Board {
     }
 
     /** Returns state filled from file [start to end) */ 
-    private static long rankFile(int start, int end) {
+    private static long fileRange(int start, int end) {
         long result = 0;
         for (int i = start; i < end; i++) {
             result |= fillFile(i);
         }
         return result;
     }
+
+    /** 64 wide array with knight attacks for each square*/
+    private static final long[] knightAttacks;
 
     /** Each of the following four tables is of size 8.
      *  The entry at i performs the eponymous operation when &ed with a state*/
