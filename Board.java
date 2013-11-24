@@ -42,6 +42,7 @@ class Board {
         northWe = new long[64];
         initRays();
         knightAttacks = new long[64];
+        initKnightAttacks();
     }
     
     
@@ -75,12 +76,12 @@ class Board {
         long board[] = new long[9];
         board[0] = WHITE_PIECES;
         board[1] = BLACK_PIECES;
-        board[2] = PAWNS:
+        board[2] = PAWNS;
         board[3] = BISHOPS;
         board[4] = KNIGHTS;
         board[5] = ROOKS;
         board[6] = KINGS;
-        board[7] = QUEENS:
+        board[7] = QUEENS;
     }
 
     /** Returns list of pseudo legal moves 
@@ -91,20 +92,21 @@ class Board {
         moves.addAll(generateRookMoves(board, player));
         moves.addAll(generatePawnMoves(board, player));
         moves.addAll(generateQueenMoves(board, player));
+        moves.addAll(generateKnightMoves(board, player));
     }
     
     public static ArrayList<int[]> generateRookMoves(long[] board, Color player) {
         ArrayList<int[]> rookMoves = new ArrayList<int[]>();
         long rooks = board[player.index()] & board[5];
         while (rooks != 0) {
-            int rook = bitscanForward(rooks);
-            long rookPseudos = rookMoves(board, rook, player);
+            int rookPos = bitscanForward(rooks);
+            long rookPseudos = rookMoves(board, rookPos, player);
             while (rookPseudos != 0) {
                 int[] m = new int[2];
-                m[0] = rook;
+                m[0] = rookPos;
                 m[1] = bitscanForward(rookPseudos);
                 rookMoves.add(m);
-                rooks ^= (1 << rook);
+                rooks ^= (1 << rookPos);
                 rookPseudos ^= (1 << m[1]);
             }
         }
@@ -115,18 +117,36 @@ class Board {
         ArrayList<int[]> bishopMoves = new ArrayList<int[]>();
         long bishops = board[player.index()] & board[3];
         while (bishops != 0) {
-            int bishop = bitscanForward(bishops);
-            long bishopPseudos = bishopMoves(board, bishop, player);
+            int bishopPos = bitscanForward(bishops);
+            long bishopPseudos = bishopMoves(board, bishopPos, player);
             while (bishopPseudos != 0) {
                 int m = new int[2];
-                m[0] = bishop;
+                m[0] = bishopPos;
                 m[1] = bitscanForward(bishopPseudos);
                 bishopMoves.add(m);
-                bishops  ^= (1 << bishop);
+                bishops  ^= (1 << bishopPos);
                 bishopPseudos ^= (1 << m[1]);
             }
         }
         return bishopMoves;
+    }
+
+    public static ArrayList<int[]> generateKnightMoves(long[] board, Color player) {
+        ArrayList<int[]> knightMoves = new ArrayList<int[]>();
+        long knights = board[player.index()] & board[4];
+        while (knights != 0) {
+            int knightPos = bitscanForward(knights);
+            long uncheckedMoves = knightAttacks[knightPos];
+            long knightPseudos = uncheckedMoves & ~board[player.index()];
+            while (knightPseudos != 0) {
+                int m = new int[2];
+                m[0] = knightPos;
+                m[1] = bitscanForward(knightPseudos);
+                knightMoves.add(m);
+                knightPseudos ^= (1 << m[1]);
+            }
+        }
+        return knightPseudos;
     }
 
     public static ArrayList<int[]> generateQueenMoves(long[] board, Color player) {
@@ -141,7 +161,7 @@ class Board {
             queenMoves.add(m);
             queenPseudos ^= (1 << m[1]);
         }
-        return queenMoves
+        return queenMoves;
     }
 
     public static ArrayList<int[]> generatePawnMoves(long[] board, Color player) {
@@ -324,7 +344,7 @@ class Board {
 
     /** Returns the state representing all moves the rook on SQUARE can make*/
     public static long rookMoves(long[] board, int square, Color player) {
-        long uncheckedMoves = rayAttack(board, square, 1) | rayAttack(board, square, -1) | rayAttack(board, square, 8) | rayAttack(board, square, -8)
+        long uncheckedMoves = rayAttack(board, square, 1) | rayAttack(board, square, -1) | rayAttack(board, square, 8) | rayAttack(board, square, -8);
         //I believe this is necessary because the result of the ray attacks
         //sometimes would have the attack ending at a friendly piece
         return uncheckedMoves & ~board[player.index()];
