@@ -1,7 +1,10 @@
 /** TODO:
  *
  *  -how to handle promotions?????
- *  -implement enPassant*/
+ *  -implement enPassant
+ *  -change naive implementation of generateMoves:
+ *     -generateQuietMoves
+ *     -generateCaptures*/
 
 
 
@@ -65,8 +68,8 @@ class Board {
      *  5:rooks
      *  6:kings
      *  7:queens
-     *  8:white visibility 
-     *  9:black visibility*/
+     *  8: ? 
+     *  9: ? */
     public long[] initBitBoard() {
         long board[] = new long[9];
         board[0] = WHITE_PIECES;
@@ -79,15 +82,16 @@ class Board {
         board[7] = QUEENS:
     }
 
-    /** Returns list of pseudo legal moves */
-    public static int[][] generateMoves(long[] board, Color player) {
+    /** Returns list of pseudo legal moves 
+     *  Doesn't distinguish between captures and quiet moves*/
+    public static ArrayList<int[]> generateMoves(long[] board, Color player) {
         //218 is the max number of moves per position (??)
         ArrayList<int[]> moves = new ArrayList<int[]>();
         long myPieces = board[player.index()];
         long rooks = myPieces & board[5];
         while (rooks != 0) {
             int rook = bitscanForward(rooks);
-            long rookPseudos = rookMoves(board, rook);
+            long rookPseudos = rookMoves(board, rook, player);
             while (rookPseudos != 0) {
                 int[] m = new int[2];
                 m[0] = rook;
@@ -100,7 +104,7 @@ class Board {
         long bishops = myPieces & board[3];
         while (bishops != 0) {
             int bishop = bitscanForward(bishops);
-            long bishopPseudos = bishopMoves(board, bishop);
+            long bishopPseudos = bishopMoves(board, bishop, player);
             while (bishopPseudos != 0) {
                 int m = new int[2];
                 m[0] = bishop;
@@ -111,13 +115,10 @@ class Board {
             }
         }
         pawnMoves = generatePawnMoves(board, player);
-        //add pawMOves into our array
-        //generate enpassant and promotion stuff
-        //
         
     }
 
-    public static int[][] generatePawnMoves(long[] board, Color player) {
+    public static ArrayList<int[]> generatePawnMoves(long[] board, Color player) {
         ArrayList<int[]> pawnMoves = new ArrayList<int[]>();
         int file = 0;
         int pushIncr, lcIncr, rcIncr;
@@ -171,12 +172,13 @@ class Board {
             r[1] = bitscanForward(rCapt);
             r[0] = r[1] + rcIncr;
             rCapt ^= (1 << r[1]);
-        }        
+        }
+        return pawnMoves;
     }
 
     /** Returns the number of bits flipped on in state */
     public static int cardinality(long state) {
-
+        
     }
     
     /** Destructively get the Nth bit of STATE.
@@ -295,14 +297,22 @@ class Board {
     }
 
     /** Returns the state representing all moves the rook on SQUARE can make*/
-    public static long rookMoves(long[] board, int square) {
-        return rayAttack(board, square, 1) & rayAttack(board, square, -1) & rayAttack(board, square, 8) & rayAttack(board, square, -8);
+    public static long rookMoves(long[] board, int square, Color player) {
+        long uncheckedMoves = rayAttack(board, square, 1) | rayAttack(board, square, -1) | rayAttack(board, square, 8) | rayAttack(board, square, -8)
+        //I believe this is necessary because the result of the ray attacks
+        //sometimes would have the attack ending at a friendly piece
+        return uncheckedMoves & ~board[player.index()];
     }
 
-    public static long bishopMoves(long[] board, int square) {
-        return rayAttack(board, square, -7) & rayAttack(board, square, 7) & rayAttack(board, square, -9) & rayAttack(board, square, 9);        
+    public static long bishopMoves(long[] board, int square, Color player) {
+        long uncheckedMoves = rayAttack(board, square, -7) | rayAttack(board, square, 7) | rayAttack(board, square, -9) | rayAttack(board, square, 9);
+        return uncheckedMoves & ~board[player.index()];
     }
-    
+
+    public static long queenMoves(long[] board, int square, Color player) {
+        long uncheckedMoves = rayAttack(board, square, -7) | rayAttack(board, square, 7) | rayAttack(board, square, -9) | rayAttack(board, square, 9) | rayAttack(board, square, 1) | rayAttack(board, square, -1) | rayAttack(board, square, 8) | rayAttack(board, square, -8);
+        return uncheckedMoves & ~board[player.index()];
+    }
 
     /** Returns the state with all of the bits from the starting point exclusive
      *  to the border 
@@ -426,5 +436,15 @@ class Board {
     private static final long[] southEa;
     private static final long[] east;
     private static final long[] northWe;
+
+
+    /** Utility function for the move generator */
+    private static int[][] arrListToPrim(ArrayList<int[]> m) {
+        int[][] prim = new int[m.size()][2];
+        for (int i = 0; i < m.size(); i++) {
+            prim[i] = m.get(i);
+        }
+        return prim;
+    }
 }
     
