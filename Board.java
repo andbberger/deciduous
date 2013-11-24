@@ -1,3 +1,10 @@
+/** TODO:
+ *
+ *  -how to handle promotions?????
+ *  -implement enPassant*/
+
+
+
 package deciduous;
 
 import java.util.ArrayList;
@@ -80,15 +87,91 @@ class Board {
         long rooks = myPieces & board[5];
         while (rooks != 0) {
             int rook = bitscanForward(rooks);
-            long rookPseudos = rookMoves(board, sq);
-            while(rookPseudos != 0) {
+            long rookPseudos = rookMoves(board, rook);
+            while (rookPseudos != 0) {
                 int[] m = new int[2];
                 m[0] = rook;
                 m[1] = bitscanForward(rookPseudos);
                 moves.add(m);
-                rooks ^= rook;
+                rooks ^= (1 << rook);
+                rookPseudos ^= (1 << m[1]);
             }
         }
+        long bishops = myPieces & board[3];
+        while (bishops != 0) {
+            int bishop = bitscanForward(bishops);
+            long bishopPseudos = bishopMoves(board, bishop);
+            while (bishopPseudos != 0) {
+                int m = new int[2];
+                m[0] = bishop;
+                m[1] = bitscanForward(bishopPseudos);
+                moves.add(m);
+                bishops  ^= (1 << bishop);
+                bishopPseudos ^= (1 << m[1]);
+            }
+        }
+        pawnMoves = generatePawnMoves(board, player);
+        //add pawMOves into our array
+        //generate enpassant and promotion stuff
+        //
+        
+    }
+
+    public static int[][] generatePawnMoves(long[] board, Color player) {
+        ArrayList<int[]> pawnMoves = new ArrayList<int[]>();
+        int file = 0;
+        int pushIncr, lcIncr, rcIncr;
+        long pushes, dPushes, lCapt, rCapt;
+        if (player == WHITE) {
+            pushIncr = -8;
+            lcIncr = -7;
+            rcIncr = -9;
+            pushes = wPawnPushes(board);
+            dPushes = wPawnDoublePushes(board);
+            lCapt = wPawnLeftCaptures(board);
+            rCapt = wPawnRightCaptures(board);
+        } else {
+            pushIncr = 8;
+            //this might be wrong!! 
+            lcIncr = 9;
+            rcIncr = 7;
+            pushes = bPawnPushes(board);
+            dPushes = bPawnDoublePushes(board);
+            lCapt = bPawnLeftCaptures(board);
+            rCapt = bPawnRightCaptures(board);
+        }
+        while (pushes != 0) {
+            long pushFile = pushes & maskFile(file);
+            long dPushFile = dPushes & maskFile(file);
+            if (pushFile != 0) {
+                int[] m = new int[2];
+                m[1] = bitscanForward(pushFile);
+                m[0] = m[1] + pushIncr;
+                pawnMoves.add(m);
+                pushes ^= (1 << m[1]);
+            }
+            if (dPushFile != 0) {
+                int[] d = new int[2];
+                //computing extraneous information all is needed is an array of booleans 
+                m = pawnMoves.get(pawnMoves.size());
+                d[0] = m[0];
+                d[1] = m[1] - pushIncr;
+                pawnMoves.add(d);
+            }
+            file += 1;
+        }
+        while (lCapt != 0) {
+            int[] l = new int[2];
+            l[1] = bitscanForward(lCapt);
+            l[0] = l[1] + lcIncr;
+            lCapt ^= (1 << l[1]);
+        }
+        while (rCapt != 0) {
+            int[] r = new int[2];
+            r[1] = bitscanForward(rCapt);
+            r[0] = r[1] + rcIncr;
+            rCapt ^= (1 << r[1]);
+        }        
     }
 
     /** Returns the number of bits flipped on in state */
@@ -144,36 +227,73 @@ class Board {
         return  r ^ unavailable;
     }
 
-    /** Returns the board state of possible pawn positions 
+    /** Returns the board state of possible single pawn pushes 
      *  Does not treat captures or promotion*/
-    public static long pawnPushes(long[] board, Color player) {    
-        int sign = player.sign();
-        long pawns = board[player.index()] & board[2];
-        long canJump = pawns & PAWNS;
-        //not sure shift takes negative arguments 
-        return (pawns << sign * 8) | (canJump << sign * 16);
+    public static long wPawnPushes(long[] board) {
+        long pawns = board[0] & board[2];
+        long occ = board[0] & board[1];
+        return (pawns << 8) & ~occ;
+    }
+
+    /** Returns the board state of possible single pawn pushes 
+     *  Does not treat captures or promotion*/
+    public static long bPawnPushes(long[] board) {
+        long pawns = board[1] & board[2];
+        long occ = board[0] & board[1];
+        return (pawns >>> 8) & ~occ;
+    }
+
+    public static long wPawnDoublePushes(long[] board) {
+        long pawns = board[0] & board[2];
+        long occ = board[0] & board[1];
+        long canJump = pawns & maskRank[1];
+        return (canJump << 16) & ~occ;
+    }
+
+    public static long bPawnDoublePushes(long[] board) {
+        long pawns = board[1] & board[2];
+        long occ = board[0] & board[1];
+        long canJump = pawns & maskRank[6];
+        return (canJump >>> 16) & ~occ;
+    }
+
+
+    /** Gets state of possible right captures. 
+     *  Does not calculate en pasant */    
+    public static long wPawnRightCaptures(long[] board) {
+        long pawns = board[0] & board[2];
+        pawns &= clearFile[0];
+        long rightMoves = pawns << 9;
+        return rightMoves & board[1];
     }
 
     /** Gets state of possible right captures. 
      *  Does not calculate en pasant */
-    public static long pawnRightCaptures(long[] board, Color player) {
-        int sign = player.sign();
-        long pawns = board[player.index()] & board[2];
-        long noLeft = pawns & clearFile[0];
-        long rightMoves = noLeft << (sign * 8 + 1);
-        return rightMoves & board[player.opposite().index()];
+    public static long bPawnRightCaptures(long[] board) {
+        long pawns = board[1] & board[2];
+        pawns &= clearFile[0];
+        long rightMoves = pawns >>> 7;
+        return rightMoves & board[0];
     }
 
     /** Gets state of possible left captures
      *  Does not calculate en passant */
-    public static long pawnLeftCaptures(long[] board, Color player) {
-        int sign = player.sign();
-        long pawns = board[player.index()] & board[2];
-        long noRight = pawns & clearFile[7];
-        long leftMoves = noRight << (sign * 8 - 1);
-        return leftMoves & board[player.opposite().index()];
+    public static long wPawnLeftCaptures(long[] board) {
+        long pawns = board[0] & board[2];
+        pawns &= clearFile[7];
+        long leftMoves = pawns << 7;
+        return leftMoves & board[1];
     }
-    
+
+    /** Gets state of possible left captures
+     *  Does not calculate en passant */
+    public static long bPawnLeftCaptures(long[] board) {
+        long pawns = board[1] & board[2];
+        pawns &= clearFile[7];
+        long leftMoves = pawns >>> 9;
+        return leftMoves * board[0];
+    }
+
     /** Returns the state representing all moves the rook on SQUARE can make*/
     public static long rookMoves(long[] board, int square) {
         return rayAttack(board, square, 1) & rayAttack(board, square, -1) & rayAttack(board, square, 8) & rayAttack(board, square, -8);
