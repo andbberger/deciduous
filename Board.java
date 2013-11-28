@@ -85,6 +85,22 @@ class Board {
         board[7] = QUEENS;
     }
 
+    /** Core operation. 
+     *  MOVE is of format {currSquare, finalSquare}
+     *  Returns the modified board
+     *  Also updates the hash*/
+    public long[] make(long[] board, int[] move) {
+
+    }
+
+
+    /** MOVE as in the same format as make. 
+     *  The inverse operation of make. */
+    public long[] unmake(long[] board, int[] move) {
+
+    }
+
+
     /** Returns list of pseudo legal moves 
      *  Doesn't distinguish between captures and quiet moves*/
     public static ArrayList<int[]> generateMoves(long[] board, Color player) {
