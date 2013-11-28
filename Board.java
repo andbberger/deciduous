@@ -4,7 +4,8 @@
  *  -implement enPassant
  *  -change naive implementation of generateMoves:
  *     -generateQuietMoves
- *     -generateCaptures*/
+ *     -generateCaptures
+ *  -Use built in enum.ordinal instead of index() method*/
 
 
 
@@ -93,6 +94,7 @@ class Board {
         moves.addAll(generatePawnMoves(board, player));
         moves.addAll(generateQueenMoves(board, player));
         moves.addAll(generateKnightMoves(board, player));
+        moves.addAll(generateKingMoves(board, player);
     }
     
     public static ArrayList<int[]> generateRookMoves(long[] board, Color player) {
@@ -164,6 +166,20 @@ class Board {
         return queenMoves;
     }
 
+    public static ArrayListt<int<[]> generateKingMoves(long[] board, Color player) {
+        ArrayList<int[]> kingMoves = new ArrayList<int[]>();
+        long king = board[player.index()] & board[6];
+        long kingPseudos = kingMoves(board, player);
+        while (kingPseudos != 0) {
+            int m = new int[2];
+            m[0] = kingPos;
+            m[1] = bitscanForward(kingPseudos);
+            kingMoves.add(m);
+            kingPseudos ^= (1 << m[1]);
+        }
+        return kingPseudos;
+    }
+
     public static ArrayList<int[]> generatePawnMoves(long[] board, Color player) {
         ArrayList<int[]> pawnMoves = new ArrayList<int[]>();
         int file = 0;
@@ -227,27 +243,6 @@ class Board {
         
     }
     
-    /** Destructively get the Nth bit of STATE.
-     *  Return true iff it is 1 */
-    public static boolean get(long state, int n) {
-        return (state >>> n) == 1;
-    }
-    
-    /** Sets the nth bit to BIT 
-     *  Returns the new STATE. */
-    public static long set(long state, boolean bit, int n) {
-        //lazy implementation
-        if (get(state, n) == bit) {
-            return state;
-        } else {
-            if (get(state, n) == 1) {
-                return state - (1 << n);
-            } else {
-                return state + (1 << n);
-            }
-        }
-    }
-
 
     /** Very important routine
      *  Naive implementation with java library call
@@ -358,6 +353,14 @@ class Board {
     public static long queenMoves(long[] board, int square, Color player) {
         long uncheckedMoves = rayAttack(board, square, -7) | rayAttack(board, square, 7) | rayAttack(board, square, -9) | rayAttack(board, square, 9) | rayAttack(board, square, 1) | rayAttack(board, square, -1) | rayAttack(board, square, 8) | rayAttack(board, square, -8);
         return uncheckedMoves & ~board[player.index()];
+    }
+
+    public static long kingMoves(long[] board, Color player) {
+        //disclaimer: this is drunk coding all of the bit hacking is probably wrong
+        long king = board[player.index()] & board[6];
+        long rect = (king & maskFile[0] << 1) & (king << 8) & (king & maskFile[7] >>> 1) & (king >>> 8);
+        long diag = (king & maskFile[7] << 7) & (king & maskFile[0] << 9) & (king & maskFile[0] >>> 7) & (king & maskFile[7] >>> 9);
+        return rect & diag;
     }
 
     /** Returns the state with all of the bits from the starting point exclusive
