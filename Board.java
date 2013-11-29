@@ -5,7 +5,10 @@
  *  -change naive implementation of generateMoves:
  *     -generateQuietMoves
  *     -generateCaptures
- *  -Use built in enum.ordinal instead of index() method*/
+ *  -Use built in enum.ordinal instead of index() method
+ *  -write tests
+ *  -write more tests
+ *  -write more tests*/
 
 
 
@@ -110,7 +113,12 @@ class Board {
         moves.addAll(generatePawnMoves(board, player));
         moves.addAll(generateQueenMoves(board, player));
         moves.addAll(generateKnightMoves(board, player));
-        moves.addAll(generateKingMoves(board, player);
+        moves.addAll(generateKingMoves(board, player));
+    }
+    
+    public static ArrayList<int[]> generateCaptures(long[] board, Color player) {
+        List<int[]> moves = new ArrayList<int[]>();
+        
     }
     
     public static ArrayList<int[]> generateRookMoves(long[] board, Color player) {
@@ -119,14 +127,8 @@ class Board {
         while (rooks != 0) {
             int rookPos = bitscanForward(rooks);
             long rookPseudos = rookMoves(board, rookPos, player);
-            while (rookPseudos != 0) {
-                int[] m = new int[2];
-                m[0] = rookPos;
-                m[1] = bitscanForward(rookPseudos);
-                rookMoves.add(m);
-                rooks ^= (1 << rookPos);
-                rookPseudos ^= (1 << m[1]);
-            }
+            rookMoves.addAll(parseMoves(rookPos, rookPseudos));
+            rooks ^= (1 << rookPos);
         }
         return rookMoves;
     }
@@ -137,14 +139,8 @@ class Board {
         while (bishops != 0) {
             int bishopPos = bitscanForward(bishops);
             long bishopPseudos = bishopMoves(board, bishopPos, player);
-            while (bishopPseudos != 0) {
-                int m = new int[2];
-                m[0] = bishopPos;
-                m[1] = bitscanForward(bishopPseudos);
-                bishopMoves.add(m);
-                bishops  ^= (1 << bishopPos);
-                bishopPseudos ^= (1 << m[1]);
-            }
+            bishopMoves.addAll(parseMoves(bishopPos, bishopPseudos);
+            bishops  ^= (1 << bishopPos);
         }
         return bishopMoves;
     }
@@ -154,47 +150,26 @@ class Board {
         long knights = board[player.index()] & board[4];
         while (knights != 0) {
             int knightPos = bitscanForward(knights);
-            long uncheckedMoves = knightAttacks[knightPos];
-            long knightPseudos = uncheckedMoves & ~board[player.index()];
-            while (knightPseudos != 0) {
-                int m = new int[2];
-                m[0] = knightPos;
-                m[1] = bitscanForward(knightPseudos);
-                knightMoves.add(m);
-                knightPseudos ^= (1 << m[1]);
-            }
+            long knightPseudos =  knightAttacks[knightPos] & ~board[player.index()];
+            knightMoves.addAll(parseMoves(knightPos, knightPseudos));
+            knights ^= (1 << knightPos);
         }
         return knightPseudos;
     }
 
     public static ArrayList<int[]> generateQueenMoves(long[] board, Color player) {
-        ArrayList<int[]> queenMoves = new ArrayList<int[]>();
         long queen = board[player.index()] & board[7];
         int queenPos = bitscanForward(queen);
         long queenPseudos = queenMoves(board, queenPos, player);
-        while (queenPseudos != 0) {
-            int m = new int[2];
-            m[0] = queenPos;
-            m[1] = bitscanForward(queenPseudos);
-            queenMoves.add(m);
-            queenPseudos ^= (1 << m[1]);
-        }
-        return queenMoves;
+        return parseMoves(queenPos, queenPseudos);
     }
 
-    public static ArrayListt<int<[]> generateKingMoves(long[] board, Color player) {
-        ArrayList<int[]> kingMoves = new ArrayList<int[]>();
+    public static ArrayList<int<[]> generateKingMoves(long[] board, Color player) {
         long king = board[player.index()] & board[6];
+        long kingPos = bitscanForward(king);
         long kingPseudos = kingMoves(board, player);
-        while (kingPseudos != 0) {
-            int m = new int[2];
-            m[0] = kingPos;
-            m[1] = bitscanForward(kingPseudos);
-            kingMoves.add(m);
-            kingPseudos ^= (1 << m[1]);
-        }
-        return kingPseudos;
-    }
+        return parseMoves(kingPos, kingPseudos);
+    } 
 
     public static ArrayList<int[]> generatePawnMoves(long[] board, Color player) {
         ArrayList<int[]> pawnMoves = new ArrayList<int[]>();
@@ -254,11 +229,36 @@ class Board {
         return pawnMoves;
     }
 
+    public static ArrayList<int[]> generateRookCaptures(long[] board, Color player) {
+        ArrayList<int[]> rookCaptures = new ArrayList<int[]>();
+        long rooks = board[player.index()] & board[5];
+        while (rooks != 0) {
+            int rookPos = bitscanForward(rooks);
+            long rookPseudos = rookMoves(board, rookPos, player) & board[player.opposite().index()];
+            rookCaptures.addAll(parseMoves(rookPos, rookPseudos));
+            rooks ^= (1 << rookPos);
+        }
+        return rookCaptures;
+    }
+    
     /** Returns the number of bits flipped on in state */
     public static int cardinality(long state) {
         
     }
-    
+
+    /** Commonly used operation in move gen.
+     *  Returns the arrayList of move pairs. */
+    public static ArrayList<int[]> parseMoves(int piecePos, long moves) {
+        ArrayList<int[]> movePairs = new ArrayList<int[]>();
+        while (moves != 0) {
+            int[] m = new int[2];
+            m[0] = piecePos;
+            m[1] = bitscanForward(moves);
+            movePairs.add(m);
+            moves ^= (1 << m[1]);
+        } 
+        return movePairs;
+    }
 
     /** Very important routine
      *  Naive implementation with java library call
