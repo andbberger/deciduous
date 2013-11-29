@@ -2,13 +2,11 @@
  *
  *  -how to handle promotions?????
  *  -implement enPassant
- *  -change naive implementation of generateMoves:
- *     -generateQuietMoves
- *     -generateCaptures
  *  -Use built in enum.ordinal instead of index() method
  *  -write tests
  *  -write more tests
- *  -write more tests*/
+ *  -write more tests
+ *  -write pawn move gen*/
 
 
 
@@ -118,7 +116,12 @@ class Board {
     
     public static ArrayList<int[]> generateCaptures(long[] board, Color player) {
         List<int[]> moves = new ArrayList<int[]>();
-        
+        moves.addAll(generateBishopCaptures(board, player));
+        moves.addAll(generateRookCaptures(board, player));
+        moves.addAll(generateKnightCaptures(board, player));
+        moves.addAll(generateQueenCaptures(board, player));
+        moves.addAll(generateKingCaptures(board, player));
+        moves.addAll(generatePawnCaptures(board, player));
     }
     
     public static ArrayList<int[]> generateRookMoves(long[] board, Color player) {
@@ -239,6 +242,48 @@ class Board {
             rooks ^= (1 << rookPos);
         }
         return rookCaptures;
+    }
+
+    public static ArrayList<int[]> generateBishopCaptures(long[] board, Color player) {
+        ArrayList<int[]> bishopCaptures = new ArrayList<int[]>();
+        long bishops = board[player.index()] & board[3];
+        while (bishops != 0) {
+            int bishopPos = bitscanForward(bishops);
+            long bishopPseudos = bishopMoves(board, bishopPos, player) & board[player.opposite().index()];
+            bishopCaptures.addAll(parseMoves(bishopPos, bishopPseudos));
+            bishops ^= (1 << bishopPos);
+        }
+        return bishopCaptures;
+    }
+
+    public static ArrayList<int[]> generateKnightCaptures(long[] board, Color player) {
+        ArrayList<int[]> knightCaptures = new ArrayList<int[]>();
+        long knights = board[player.index()] & board[4];
+        while (knights != 0) {
+            int knightPos = bitscanForward(knights);
+            long knightPseudos = knightAttacks[knightPos] & board[player.opposite().index()];
+            knightCaptures.addAll(parseMoves(knightPos, knightPseudos));
+            knights ^= (1 << knightPos);
+        }
+        return knightCaptures;
+    }
+
+    public static ArrayList<int[]> generateQueenCaptures(long[] board, Color player) {
+        long queen = board[player.index()] & board[7];
+        long queenPos = bitscanForward(queen);
+        long queenPseudos = queenMoves(board, queenPos, player) & board[player.opposite().index()];
+        return parseMoves(queenPos, queenPseudos);
+    }
+
+    public static ArrayList<int[]> generateKingCaptures(long[] board, Color player) {
+        long king = board[player.index()] & board[6];
+        long kingPos = bitscanForward(king);
+        long kingPseudos = kingMoves(board, player) & board[player.opposite().index()];
+        return parseMoves(kingPos, kingPseudos);
+    }
+
+    public static ArrayList<int[]> generatePawnCaptures(long[] board, Color player) {
+        //this one is more complicated 
     }
     
     /** Returns the number of bits flipped on in state */
