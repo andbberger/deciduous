@@ -13,6 +13,7 @@
 package deciduous;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import static deciduous.Color;
 
@@ -45,6 +46,10 @@ class Board {
         initRays();
         knightAttacks = new long[64];
         initKnightAttacks();
+        Random rgen = new Random();
+        for (int k = 0; k < 9; k++) {
+            hMultiplers[k] = rgen.nextLong();
+        }
     }
     
     
@@ -89,18 +94,48 @@ class Board {
     /** Core operation. 
      *  MOVE is of format {currSquare, finalSquare}
      *  Returns the modified board
-     *  Also updates the hash*/
-    public long[] make(long[] board, int[] move) {
-
+     *  Doesn't yet handle promotions or en passant, of course*/
+    public static long[] make(long[] board, Move m) {
+        if (m.isWhite()) {
+            board[0] ^= (1 << m.getCoords()[0]);
+            board[0] |= (1 << m.getCoords()[1]);
+            if (m.isCapture()) {
+                board[1] ^= (1 << m.getCoords()[1]);
+            }             
+        } else {
+            board[1] ^= (1 << m.getCoords()[0]);
+            board[1] |= (1 << m.getCoords()[1]);
+            if (m.isCapture()) {
+                board[0] ^= (1 << m.getCoords()[1]);
+            }             
+        }
+        if (m.isCapture()) {
+            board[m.getCapture()] ^= (1 << m.getCoords()[1]);
+        }
+        board[m.getPiece()] ^= (1 << m.getCoords()[0]);
+        board[m.getPiece()] |= (1 << m.getCoords()[1]);
     }
 
 
     /** MOVE as in the same format as make. 
      *  The inverse operation of make. */
-    public long[] unmake(long[] board, int[] move) {
+    public static long[] unmake(long[] board, Move u) {
 
     }
 
+
+    /** First attempt at designing hash function. 
+     *  This one will take the rather naive approach of multiplying
+     *  each board state by a random long and xoring them together.
+     *  There is no incremental update scheme, I hope this will be fast enough.
+     *  Collision testing must be performed.*/
+    public static long hash(long[] board) {
+        long h = 0;
+        for (int r = 0; r < 9; r++) {
+            h ^= board[r] * hMultipliers[r];
+        }
+        return h;
+    }
 
     /** Returns list of pseudo legal moves 
      *  Doesn't distinguish between captures and quiet moves*/
@@ -286,10 +321,6 @@ class Board {
         //this one is more complicated 
     }
     
-    /** Returns the number of bits flipped on in state */
-    public static int cardinality(long state) {
-        
-    }
 
     /** Commonly used operation in move gen.
      *  Returns the arrayList of move pairs. */
@@ -581,6 +612,8 @@ class Board {
     private static final long[] east;
     private static final long[] northWe;
 
+
+    private static final long[] hMultipliers;
 
     /** Utility function for the move generator */
     private static int[][] arrListToPrim(ArrayList<int[]> m) {
