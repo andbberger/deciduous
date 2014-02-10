@@ -492,7 +492,6 @@ class Board {
     }
 
     public static long kingMoves(long[] board, Color player) {
-        //disclaimer: this is drunk coding all of the bit hacking is probably wrong
         long king = board[player.index()] & board[6];
         long rect = (king & maskFile[0] << 1) & (king << 8) & (king & maskFile[7] >>> 1) & (king >>> 8);
         long diag = (king & maskFile[7] << 7) & (king & maskFile[0] << 9) & (king & maskFile[0] >>> 7) & (king & maskFile[7] >>> 9);
