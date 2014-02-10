@@ -98,13 +98,13 @@ class Board {
     public static long[] make(long[] board, Move m) {
         if (m.isWhite()) {
             board[0] ^= (1 << m.getCoords()[0]);
-            board[0] |= (1 << m.getCoords()[1]);
+            board[0] ^= (1 << m.getCoords()[1]);
             if (m.isCapture()) {
                 board[1] ^= (1 << m.getCoords()[1]);
             }             
         } else {
             board[1] ^= (1 << m.getCoords()[0]);
-            board[1] |= (1 << m.getCoords()[1]);
+            board[1] ^= (1 << m.getCoords()[1]);
             if (m.isCapture()) {
                 board[0] ^= (1 << m.getCoords()[1]);
             }             
@@ -113,14 +113,16 @@ class Board {
             board[m.getCapture()] ^= (1 << m.getCoords()[1]);
         }
         board[m.getPiece()] ^= (1 << m.getCoords()[0]);
-        board[m.getPiece()] |= (1 << m.getCoords()[1]);
+        board[m.getPiece()] ^= (1 << m.getCoords()[1]);
     }
 
 
     /** MOVE as in the same format as make. 
      *  The inverse operation of make. */
     public static long[] unmake(long[] board, Move u) {
-
+        //delightfully xor is it's own inverse operation and this will
+        //work until I get fancy with en passant 
+        return make(board, u)
     }
 
 
@@ -158,58 +160,66 @@ class Board {
         moves.addAll(generateKingCaptures(board, player));
         moves.addAll(generatePawnCaptures(board, player));
     }
-    
-    public static ArrayList<int[]> generateRookMoves(long[] board, Color player) {
-        ArrayList<int[]> rookMoves = new ArrayList<int[]>();
+
+    /** Returns an ArrayList of all non captures moves rooks on BOARD of COLOR can make. */
+    public static ArrayList<Moves> generateRookMoves(long[] board, Color player) {
+        ArrayList<Moves> rookMoves = new ArrayList<Moves>();
         long rooks = board[player.index()] & board[5];
         while (rooks != 0) {
             int rookPos = bitscanForward(rooks);
-            long rookPseudos = rookMoves(board, rookPos, player);
-            rookMoves.addAll(parseMoves(rookPos, rookPseudos));
+            long rookPseudos = rookMoves(board, rookPos, player) & ~board[player.opposite().index()];
+            rookMoves.addAll(parseMoves(rookPos, rookPseudos, player, 5));
             rooks ^= (1 << rookPos);
         }
         return rookMoves;
     }
 
-    public static ArrayList<int[]> generateBishopMoves(long[] board, Color player) {
-        ArrayList<int[]> bishopMoves = new ArrayList<int[]>();
+    /** Returns an ArrayList of all non capture moves bishops on BOARD of COLOR can make.  */
+    public static ArrayList<Moves> generateBishopMoves(long[] board, Color player) {
+        ArrayList<Moves> bishopMoves = new ArrayList<Moves>();
         long bishops = board[player.index()] & board[3];
         while (bishops != 0) {
             int bishopPos = bitscanForward(bishops);
-            long bishopPseudos = bishopMoves(board, bishopPos, player);
-            bishopMoves.addAll(parseMoves(bishopPos, bishopPseudos);
+            long bishopPseudos = bishopMoves(board, bishopPos, player) & ~board[player.opposite().index()];
+            bishopMoves.addAll(parseMoves(bishopPos, bishopPseudos, player, 3);
             bishops  ^= (1 << bishopPos);
         }
         return bishopMoves;
     }
 
-    public static ArrayList<int[]> generateKnightMoves(long[] board, Color player) {
-        ArrayList<int[]> knightMoves = new ArrayList<int[]>();
+    public static ArrayList<Moves> generateKnightMoves(long[] board, Color player) {
+        ArrayList<Moves> knightMoves = new ArrayList<Moves>();
         long knights = board[player.index()] & board[4];
         while (knights != 0) {
             int knightPos = bitscanForward(knights);
-            long knightPseudos =  knightAttacks[knightPos] & ~board[player.index()];
-            knightMoves.addAll(parseMoves(knightPos, knightPseudos));
+            long knightPseudos =  knightAttacks[knightPos] & ~board[player.index()] & ~board[player.opposite().index()];
+            knightMoves.addAll(parseMoves(knightPos, knightPseudos, player, 4));
             knights ^= (1 << knightPos);
         }
-        return knightPseudos;
+        return knightMoves;
     }
 
-    public static ArrayList<int[]> generateQueenMoves(long[] board, Color player) {
-        long queen = board[player.index()] & board[7];
-        int queenPos = bitscanForward(queen);
-        long queenPseudos = queenMoves(board, queenPos, player);
-        return parseMoves(queenPos, queenPseudos);
+    /** Returns an ArrayList of all non capture moves queens on BOARD of COLOR can make. */
+    public static ArrayList<Moves> generateQueenMoves(long[] board, Color player) {
+        ArrayList<Moves> queenMoves = new ArrayList<Moves>();
+        long queens = board[player.index()] & board[7];
+        while (queens != 0) {
+            int queenPos = bitscanForward(queen);
+            long queenPseudos = queenMoves(board, queenPos, player) & ~board[player.opposite().index()];
+            queenMoves.addAll(parseMoves(queenPos, queenPseudos, player, 7));
+        }
+        return queenMoves;
     }
 
-    public static ArrayList<int<[]> generateKingMoves(long[] board, Color player) {
+    /** Returns an ARrayList of all non capture moves the king on BOARD of COLOR can make. */
+    public static ArrayList<Moves> generateKingMoves(long[] board, Color player) {
         long king = board[player.index()] & board[6];
         long kingPos = bitscanForward(king);
-        long kingPseudos = kingMoves(board, player);
-        return parseMoves(kingPos, kingPseudos);
+        long kingPseudos = kingMoves(board, player) & ~board[player.opposite().index()];
+        return parseMoves(kingPos, kingPseudos, player, 6);
     } 
 
-    public static ArrayList<int[]> generatePawnMoves(long[] board, Color player) {
+    public static ArrayList<Moves> generatePawnMoves(long[] board, Color player) {
         ArrayList<int[]> pawnMoves = new ArrayList<int[]>();
         int file = 0;
         int pushIncr, lcIncr, rcIncr;
@@ -264,57 +274,65 @@ class Board {
             r[0] = r[1] + rcIncr;
             rCapt ^= (1 << r[1]);
         }
-        return pawnMoves;
+        ArrayList<Moves> pMoves = new ArrayList<Moves>();
+        for (int[] m : pawnMoves) {
+            pMoves.add(new Move(m, 2, player));
+        }
+        return pMoves;
     }
 
-    public static ArrayList<int[]> generateRookCaptures(long[] board, Color player) {
-        ArrayList<int[]> rookCaptures = new ArrayList<int[]>();
+    public static ArrayList<Move> generateRookCaptures(long[] board, Color player) {
+        ArrayList<Move> rookCaptures = new ArrayList<Move>();
         long rooks = board[player.index()] & board[5];
         while (rooks != 0) {
             int rookPos = bitscanForward(rooks);
             long rookPseudos = rookMoves(board, rookPos, player) & board[player.opposite().index()];
-            rookCaptures.addAll(parseMoves(rookPos, rookPseudos));
+            rookCaptures.addAll(parseCaptures(rookPos, rookPseudos, player, 5, board));
             rooks ^= (1 << rookPos);
         }
         return rookCaptures;
     }
 
-    public static ArrayList<int[]> generateBishopCaptures(long[] board, Color player) {
-        ArrayList<int[]> bishopCaptures = new ArrayList<int[]>();
+    public static ArrayList<Move> generateBishopCaptures(long[] board, Color player) {
+        ArrayList<Move> bishopCaptures = new ArrayList<Move>();
         long bishops = board[player.index()] & board[3];
         while (bishops != 0) {
             int bishopPos = bitscanForward(bishops);
             long bishopPseudos = bishopMoves(board, bishopPos, player) & board[player.opposite().index()];
-            bishopCaptures.addAll(parseMoves(bishopPos, bishopPseudos));
+            bishopCaptures.addAll(parseCaptures(bishopPos, bishopPseudos, plaer, 3));
             bishops ^= (1 << bishopPos);
         }
         return bishopCaptures;
     }
 
-    public static ArrayList<int[]> generateKnightCaptures(long[] board, Color player) {
-        ArrayList<int[]> knightCaptures = new ArrayList<int[]>();
+    public static ArrayList<Move> generateKnightCaptures(long[] board, Color player) {
+        ArrayList<Move> knightCaptures = new ArrayList<Move>();
         long knights = board[player.index()] & board[4];
         while (knights != 0) {
             int knightPos = bitscanForward(knights);
             long knightPseudos = knightAttacks[knightPos] & board[player.opposite().index()];
-            knightCaptures.addAll(parseMoves(knightPos, knightPseudos));
+            knightCaptures.addAll(parseCaptures(knightPos, knightPseudos, player, 4, board));
             knights ^= (1 << knightPos);
         }
         return knightCaptures;
     }
-
-    public static ArrayList<int[]> generateQueenCaptures(long[] board, Color player) {
-        long queen = board[player.index()] & board[7];
-        long queenPos = bitscanForward(queen);
-        long queenPseudos = queenMoves(board, queenPos, player) & board[player.opposite().index()];
-        return parseMoves(queenPos, queenPseudos);
+ 
+    public static ArrayList<Move> generateQueenCaptures(long[] board, Color player) {
+        ArrayList<Move> queenMoves = new ArrayList<Move>();
+        long queens = board[player.index()] & board[7];
+        while (queens != 0) {
+            long queenPos = bitscanForward(queen);
+            long queenPseudos = queenMoves(board, queenPos, player) & board[player.opposite().index()];
+            queenMoves.addAll(parseCaptures(queenPos, queenPseudos, player, 7, board));
+        }
+                
     }
 
     public static ArrayList<int[]> generateKingCaptures(long[] board, Color player) {
         long king = board[player.index()] & board[6];
         long kingPos = bitscanForward(king);
         long kingPseudos = kingMoves(board, player) & board[player.opposite().index()];
-        return parseMoves(kingPos, kingPseudos);
+        return parseCaptures(kingPos, kingPseudos, player, 6, board);
     }
 
     public static ArrayList<int[]> generatePawnCaptures(long[] board, Color player) {
@@ -323,17 +341,41 @@ class Board {
     
 
     /** Commonly used operation in move gen.
-     *  Returns the arrayList of move pairs. */
-    public static ArrayList<int[]> parseMoves(int piecePos, long moves) {
-        ArrayList<int[]> movePairs = new ArrayList<int[]>();
+     *  Returns the arrayList of moves. 
+     *  PIECE is an integer 2-7 representing the type of the piece that moves. */
+    public static ArrayList<Move> parseMoves(int piecePos, long moves, Color player, int piece) {
+        ArrayList<Move> movePairs = new ArrayList<Move>();
         while (moves != 0) {
             int[] m = new int[2];
             m[0] = piecePos;
             m[1] = bitscanForward(moves);
-            movePairs.add(m);
+            Move myMove = new Move(m, piece, player);
+            movePairs.add(myMove);
             moves ^= (1 << m[1]);
         } 
         return movePairs;
+    }
+
+    /** Commonly used operation in move gen.
+     *  Returns the ArrayList of capture (move objects)
+     *  PIECE is an integer 2-7 representing the type of the piece that moves. */
+    public static ArrayList<Move> parseCaptures(int piecePos, long moves, Color player, int piece, long[] board) {
+        ArrayList<Move> captures = new ArrayList<Move>();
+        while (moves != 0) {
+            int m = new int[2];
+            m[0] = piecePos;
+            m[1] = bitScanForward(moves);
+            Move myMove =  new Move(m, piece, player);
+            for (int p = 2; p <= 7; p++) {
+                if ((board[p]  & (1 << m[1])) != 0) {
+                    myMove.setCapture(p);
+                    break;
+                } 
+            }
+            captures.add(myMove);
+            moves ^= (1 << m[1]);
+        }
+        return captures;
     }
 
     /** Very important routine
@@ -429,19 +471,21 @@ class Board {
         return leftMoves * board[0];
     }
 
-    /** Returns the state representing all moves the rook on SQUARE can make*/
+    /** Returns the state representing all moves the rook on SQUARE can make, including captures.*/
     public static long rookMoves(long[] board, int square, Color player) {
         long uncheckedMoves = rayAttack(board, square, 1) | rayAttack(board, square, -1) | rayAttack(board, square, 8) | rayAttack(board, square, -8);
-        //I believe this is necessary because the result of the ray attacks
-        //sometimes would have the attack ending at a friendly piece
+        //ray attack includes an obstacle at the end, possibly of the same color
         return uncheckedMoves & ~board[player.index()];
     }
 
+    /** Returns the state representing all moves the bishop on SQUARE can make, including captures.*/
     public static long bishopMoves(long[] board, int square, Color player) {
         long uncheckedMoves = rayAttack(board, square, -7) | rayAttack(board, square, 7) | rayAttack(board, square, -9) | rayAttack(board, square, 9);
         return uncheckedMoves & ~board[player.index()];
     }
 
+
+    /** Returns the state representing all moves the queen on SQUARE can make, including captures. */
     public static long queenMoves(long[] board, int square, Color player) {
         long uncheckedMoves = rayAttack(board, square, -7) | rayAttack(board, square, 7) | rayAttack(board, square, -9) | rayAttack(board, square, 9) | rayAttack(board, square, 1) | rayAttack(board, square, -1) | rayAttack(board, square, 8) | rayAttack(board, square, -8);
         return uncheckedMoves & ~board[player.index()];
